@@ -698,7 +698,7 @@
 	.controls {
 		position: absolute;
 		top: 10px;
-		left: 10px;
+		left: 100px;
 		z-index: 1000;
 		display: flex;
 		gap: 10px;
@@ -711,6 +711,24 @@
 		border-radius: 4px;
 		cursor: pointer;
 		font-weight: bold;
+	}
+
+	/* Hide Leaflet attribution flag */
+	:global(.leaflet-control-attribution a[href*='leaflet']) {
+		display: none;
+	}
+
+	/* Mobile styles */
+	@media (max-width: 768px) {
+		.controls {
+			flex-direction: column;
+			left: 10px;
+		}
+
+		.controls button {
+			padding: 8px 12px;
+			font-size: 0.9rem;
+		}
 	}
 
 	.controls button:hover:not(:disabled) {
