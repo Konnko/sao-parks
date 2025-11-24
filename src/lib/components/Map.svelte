@@ -73,6 +73,10 @@
 	let isDrawingPark = $state(false);
 	let isPlacingFacility = $state(false);
 
+	// Modal state for image viewer
+	let modalImageUrl = $state<string | null>(null);
+	let showImageModal = $state(false);
+
 	// Filter state
 	let showFilterPanel = $state(false);
 	let selectedDistricts = $state(new SvelteSet<number>());
@@ -117,7 +121,42 @@
 		parks.filter((park) => !park.districtId || selectedDistricts.has(park.districtId))
 	);
 
+	// Function to open image modal (exposed to window for popup onclick)
+	function openImageModal(url: string) {
+		modalImageUrl = url;
+		showImageModal = true;
+	}
+
+	function closeImageModal() {
+		showImageModal = false;
+		modalImageUrl = null;
+	}
+
+	// Function to close popup (exposed to window for popup onclick)
+	function closePopup() {
+		map.closePopup();
+	}
+
+	// Handle Escape key to close modal
+	$effect(() => {
+		if (showImageModal) {
+			const handleEscape = (e: KeyboardEvent) => {
+				if (e.key === 'Escape') {
+					closeImageModal();
+				}
+			};
+			window.addEventListener('keydown', handleEscape);
+			return () => {
+				window.removeEventListener('keydown', handleEscape);
+			};
+		}
+	});
+
 	onMount(() => {
+		// Expose functions to window for popup onclick handlers
+		(window as any).openImageModal = openImageModal;
+		(window as any).closePopup = closePopup;
+
 		// Initialize map
 		map = L.map(mapContainer).setView([55.85, 37.52], 12); // Moscow North District (SAO)
 
@@ -232,8 +271,8 @@
 
 					// Create popup content
 					let popupContent = `
-						<div class="district-popup" onclick="event.target === event.currentTarget && this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">
-							<h3 onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()" style="cursor: pointer;">${district.name}</h3>
+						<div class="district-popup">
+							<h3>${district.name}</h3>
 							<p><strong>Парки:</strong> ${parkCount}</p>
 							${parkCount > 0 ? `<ul class="park-list">${parksInDistrict.map((p) => `<li>${p.name}</li>`).join('')}</ul>` : '<p class="no-parks">Нет парков в этом округе</p>'}
 							${
@@ -246,13 +285,14 @@
 							`
 									: ''
 							}
+							<button onclick="window.closePopup()" class="close-popup-btn" style="width: 100%; background: #f0f0f0; color: #333; border: none; padding: 0.5rem 1rem; margin-top: 0.75rem; border-radius: 4px; cursor: pointer; font-weight: 600;">Закрыть</button>
 						</div>
 					`;
 
 					layer.bindPopup(popupContent, {
 						maxWidth: 300,
 						className: 'custom-popup',
-						closeButton: true
+						closeButton: false
 					});
 				}
 
@@ -313,8 +353,8 @@
 
 					// Create popup content
 					let popupContent = `
-						<div class="park-popup" onclick="event.target === event.currentTarget && this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">
-							<h3 onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()" style="cursor: pointer;">${park.name}</h3>
+						<div class="park-popup">
+							<h3>${park.name}</h3>
 							${district ? `<p><strong>Округ:</strong> ${district.name}</p>` : ''}
 							${park.description ? `<p><strong>Описание:</strong> ${park.description}</p>` : ''}
 							${park.area ? `<p><strong>Площадь:</strong> ${park.area.toFixed(2)} м² (${(park.area / 10000).toFixed(2)} га)</p>` : ''}
@@ -331,13 +371,14 @@
 							`
 									: ''
 							}
+							<button onclick="window.closePopup()" class="close-popup-btn" style="width: 100%; background: #f0f0f0; color: #333; border: none; padding: 0.5rem 1rem; margin-top: 0.75rem; border-radius: 4px; cursor: pointer; font-weight: 600;">Закрыть</button>
 						</div>
 					`;
 
 					layer.bindPopup(popupContent, {
 						maxWidth: 300,
 						className: 'custom-popup',
-						closeButton: true
+						closeButton: false
 					});
 				}
 
@@ -388,10 +429,10 @@
 
 				// Create popup content
 				let popupContent = `
-					<div class="facility-popup" onclick="event.target === event.currentTarget && this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">
-						${facility.photo ? `<img src="${facility.photo}" alt="${facility.name}" class="popup-image" style="width: 100%; height: auto; object-fit: contain; border-radius: 4px 4px 0 0; margin: -1rem -1rem 0.5rem -1rem; display: block;" />` : ''}
-						<h3 onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()" style="cursor: pointer;">${facility.name}</h3>
-<h5>${facility.latitude.toFixed(6)}, ${facility.longitude.toFixed(6)}</h5>
+					<div class="facility-popup">
+						${facility.photo ? `<img src="${facility.photo}" alt="${facility.name}" class="popup-image" style="width: 100%; height: auto; object-fit: contain; border-radius: 4px 4px 0 0; margin: -1rem -1rem 0.5rem -1rem; display: block; cursor: pointer;" onclick="window.openImageModal('${facility.photo}')" />` : ''}
+						<h3>${facility.name}</h3>
+						<h5>${facility.latitude.toFixed(6)}, ${facility.longitude.toFixed(6)}</h5>
 						<p><strong>Тип:</strong> ${FACILITY_TYPES[facility.type as keyof typeof FACILITY_TYPES] || facility.type}</p>
 						${park ? `<p><strong>Парк:</strong> ${park.name}</p>` : ''}
 						${facility.description ? `<p><strong>Описание:</strong> ${facility.description}</p>` : ''}
@@ -408,13 +449,14 @@
 						`
 								: ''
 						}
+						<button onclick="window.closePopup()" class="close-popup-btn" style="width: 100%; background: #f0f0f0; color: #333; border: none; padding: 0.5rem 1rem; margin-top: 0.75rem; border-radius: 4px; cursor: pointer; font-weight: 600;">Закрыть</button>
 					</div>
 				`;
 
 				marker.bindPopup(popupContent, {
 					maxWidth: 300,
 					className: 'custom-popup',
-					closeButton: true
+					closeButton: false
 				});
 			}
 
@@ -733,6 +775,28 @@
 			</div>
 		</div>
 	{/if}
+
+	<!-- Image Modal -->
+	{#if showImageModal && modalImageUrl}
+		<div
+			class="image-modal"
+			onclick={closeImageModal}
+			onkeydown={(e) => e.key === 'Escape' && closeImageModal()}
+			role="dialog"
+			aria-modal="true"
+			tabindex="-1"
+		>
+			<div
+				class="image-modal-content"
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => e.stopPropagation()}
+				role="document"
+			>
+				<button class="image-modal-close" onclick={closeImageModal}>&times;</button>
+				<img src={modalImageUrl} alt="Facility" />
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -816,6 +880,14 @@
 	:global(.custom-popup .leaflet-popup-content) {
 		margin: 0;
 		padding: 0;
+	}
+
+	:global(.custom-popup .leaflet-popup-close-button) {
+		display: none !important;
+	}
+
+	:global(.close-popup-btn:hover) {
+		background: #e0e0e0 !important;
 	}
 
 	:global(.district-popup),
@@ -1011,5 +1083,55 @@
 	:global(.park-popup .delete-btn:hover),
 	:global(.facility-popup .delete-btn:hover) {
 		background: #c82333 !important;
+	}
+
+	/* Image Modal Styles */
+	.image-modal {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.9);
+		z-index: 10000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+	}
+
+	.image-modal-content {
+		position: relative;
+		max-width: 90vw;
+		max-height: 90vh;
+		cursor: default;
+	}
+
+	.image-modal-content img {
+		max-width: 100%;
+		max-height: 90vh;
+		object-fit: contain;
+		display: block;
+	}
+
+	.image-modal-close {
+		position: absolute;
+		top: -60px;
+		right: 0;
+		background: none;
+		border: none;
+		color: white;
+		font-size: 60px;
+		font-weight: 300;
+		cursor: pointer;
+		padding: 0;
+		width: 60px;
+		height: 60px;
+		line-height: 1;
+		transition: opacity 0.2s;
+	}
+
+	.image-modal-close:hover {
+		opacity: 0.7;
 	}
 </style>
