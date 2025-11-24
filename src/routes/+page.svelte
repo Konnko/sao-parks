@@ -36,7 +36,7 @@
 		description?: string;
 		contractAction?: string;
 		contractWith?: string;
-		contractTerm?: string;
+		contractTerm?: string | null;
 	};
 
 	let parks = $state<Park[]>([]);
@@ -437,8 +437,8 @@
 		background: white;
 		padding: 2rem;
 		border-radius: 8px;
-		max-width: 800px;
-		width: 90%;
+		width: 560px;
+		max-width: 90%;
 		max-height: 80vh;
 		overflow: auto;
 	}

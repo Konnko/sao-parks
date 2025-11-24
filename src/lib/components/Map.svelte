@@ -80,13 +80,35 @@
 	let selectedFacilityTypes = $state(new SvelteSet<string>());
 	let filtersInitialized = $state(false);
 
-	// Initialize all filters as selected only once
+	// Initialize all filters as selected and keep new items selected
 	$effect(() => {
-		if (!filtersInitialized && districts.length > 0 && parks.length > 0) {
+		if (!filtersInitialized) {
+			// Initialize with all current items
 			selectedDistricts = new SvelteSet(districts.map((d) => d.id));
 			selectedParks = new SvelteSet(parks.map((p) => p.id));
 			selectedFacilityTypes = new SvelteSet(Object.keys(FACILITY_TYPES));
 			filtersInitialized = true;
+		} else {
+			// Auto-select new districts
+			districts.forEach((d) => {
+				if (!selectedDistricts.has(d.id)) {
+					selectedDistricts.add(d.id);
+				}
+			});
+
+			// Auto-select new parks
+			parks.forEach((p) => {
+				if (!selectedParks.has(p.id)) {
+					selectedParks.add(p.id);
+				}
+			});
+
+			// Auto-select new facility types
+			Object.keys(FACILITY_TYPES).forEach((type) => {
+				if (!selectedFacilityTypes.has(type)) {
+					selectedFacilityTypes.add(type);
+				}
+			});
 		}
 	});
 
@@ -154,10 +176,7 @@
 				marker: false,
 				circlemarker: false
 			},
-			edit: {
-				featureGroup: drawnItems,
-				remove: false
-			}
+			edit: false
 		} as L.Control.DrawConstructorOptions);
 
 		map.addControl(drawControl);

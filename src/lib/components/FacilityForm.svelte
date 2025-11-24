@@ -24,7 +24,7 @@
 		description?: string;
 		contractAction?: string;
 		contractWith?: string;
-		contractTerm?: string;
+		contractTerm?: string | null;
 	};
 
 	let {
@@ -50,7 +50,19 @@
 	let description = $state(facility?.description || '');
 	let contractAction = $state(facility?.contractAction || '');
 	let contractWith = $state(facility?.contractWith || '');
-	let contractTerm = $state(facility?.contractTerm || '');
+	let contractTermStart = $state('');
+	let contractTermEnd = $state('');
+
+	// Parse contractTerm if it exists (format: "[YYYY-MM-DD,YYYY-MM-DD)")
+	$effect(() => {
+		if (facility?.contractTerm) {
+			const match = facility.contractTerm.match(/\[(\d{4}-\d{2}-\d{2}),(\d{4}-\d{2}-\d{2})\)/);
+			if (match) {
+				contractTermStart = match[1];
+				contractTermEnd = match[2];
+			}
+		}
+	});
 	let photoFile = $state<File | null>(null);
 	let photoUrl = $state(facility?.photo || '');
 	let loading = $state(false);
@@ -144,7 +156,10 @@
 					photo: photoUrl || null,
 					contractAction: contractAction || null,
 					contractWith: contractWith || null,
-					contractTerm: contractTerm || null,
+					contractTerm:
+						contractTermStart && contractTermEnd
+							? `[${contractTermStart},${contractTermEnd})`
+							: null,
 					parkId: parseInt(parkId)
 				})
 			});
@@ -242,13 +257,17 @@
 		</div>
 
 		<div class="form-group">
-			<label for="contractTerm">Cрок контракта</label>
-			<input
-				type="text"
-				id="contractTerm"
-				bind:value={contractTerm}
-				placeholder="Введите срок контракта"
-			/>
+			<label for="contractTermStart">Cрок контракта</label>
+			<div class="date-range">
+				<input
+					type="date"
+					id="contractTermStart"
+					bind:value={contractTermStart}
+					placeholder="Начало"
+				/>
+				<span>—</span>
+				<input type="date" id="contractTermEnd" bind:value={contractTermEnd} placeholder="Конец" />
+			</div>
 		</div>
 
 		<div class="form-group">
@@ -381,5 +400,20 @@
 	button:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
+	}
+
+	.date-range {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.date-range input {
+		flex: 1;
+	}
+
+	.date-range span {
+		color: #666;
+		font-weight: 500;
 	}
 </style>

@@ -7,9 +7,17 @@ import {
 	integer,
 	pgEnum,
 	index,
-	serial
+	serial,
+	customType
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+
+// Custom daterange type for PostgreSQL
+const daterange = customType<{ data: string; driverData: string }>({
+	dataType() {
+		return 'daterange';
+	}
+});
 
 // Enums
 export const facilityTypeEnum = pgEnum('FacilityType', [
@@ -64,7 +72,7 @@ export const facilities = pgTable(
 		typeCoverage: text('type_coverage'),
 		contractAction: text('contract_action'),
 		contractWith: text('contract_with'),
-		contractTerm: text('contract_term'),
+		contractTerm: daterange('contract_term'),
 		parkId: integer('park_id').references(() => parks.id),
 		createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
 		updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow()

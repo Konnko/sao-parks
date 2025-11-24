@@ -1,3 +1,5 @@
+Mega vibecoded slop, proceed with caution. Meant to be as simple, naive and is created in like a day
+
 # SAO Parks
 
 A web application for marking parks and facilities on an interactive map with admin-controlled editing.
