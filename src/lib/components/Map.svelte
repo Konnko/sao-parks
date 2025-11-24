@@ -274,7 +274,7 @@
 						<div class="district-popup">
 							<h3>${district.name}</h3>
 							<p><strong>Парки:</strong> ${parkCount}</p>
-							${parkCount > 0 ? `<ul class="park-list">${parksInDistrict.map((p) => `<li>${p.name}</li>`).join('')}</ul>` : '<p class="no-parks">Нет парков в этом округе</p>'}
+							${parkCount > 0 ? `<ul class="park-list">${parksInDistrict.map((p) => `<li>${p.name}</li>`).join('')}</ul>` : '<p class="no-parks">Нет парков в этом районе</p>'}
 							${
 								isAdmin
 									? `
@@ -355,7 +355,7 @@
 					let popupContent = `
 						<div class="park-popup">
 							<h3>${park.name}</h3>
-							${district ? `<p><strong>Округ:</strong> ${district.name}</p>` : ''}
+							${district ? `<p><strong>Район:</strong> ${district.name}</p>` : ''}
 							${park.description ? `<p><strong>Описание:</strong> ${park.description}</p>` : ''}
 							${park.area ? `<p><strong>Площадь:</strong> ${park.area.toFixed(2)} м² (${(park.area / 10000).toFixed(2)} га)</p>` : ''}
 							${park.balanceHolder ? `<p><strong>Балансодержатель:</strong> ${park.balanceHolder}</p>` : ''}
@@ -679,7 +679,7 @@
 	{#if isAdmin}
 		<div class="controls">
 			<button onclick={startDrawingDistrict} disabled={isDrawingDistrict}>
-				{isDrawingDistrict ? 'Рисование...' : 'Добавить округ'}
+				{isDrawingDistrict ? 'Рисование...' : 'Добавить район'}
 			</button>
 			<button onclick={startDrawingPark} disabled={isDrawingPark}>
 				{isDrawingPark ? 'Рисование...' : 'Добавить парк'}
@@ -731,7 +731,7 @@
 			<!-- Districts Filter -->
 			<div class="filter-section">
 				<div class="filter-header">
-					<h4>Округа</h4>
+					<h4>Районы</h4>
 					<div class="filter-buttons">
 						<button onclick={selectAllDistricts} class="filter-btn">Все</button>
 						<button onclick={deselectAllDistricts} class="filter-btn">Ничего</button>

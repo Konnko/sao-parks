@@ -38,12 +38,26 @@
 	let districtId = $state(park?.districtId?.toString() || '');
 	let loading = $state(false);
 	let error = $state('');
+	let editableGeometry = $state(JSON.stringify(geometry, null, 2));
+
+	// Parse geometry from editable text and compute error
+	let parsedGeometry = $derived.by(() => {
+		try {
+			const parsed = JSON.parse(editableGeometry);
+			return { success: true, data: parsed, error: '' };
+		} catch (e) {
+			return { success: false, data: geometry, error: 'Неверный формат JSON' };
+		}
+	});
+
+	let geometryError = $derived(parsedGeometry.error);
+	let finalGeometry = $derived(parsedGeometry.data);
 
 	// Auto-calculate area from geometry (in square meters)
 	let area = $derived.by(() => {
-		if (!geometry) return null;
+		if (!finalGeometry) return null;
 		try {
-			const polygon = turf.polygon(geometry.coordinates);
+			const polygon = turf.polygon(finalGeometry.coordinates);
 			return turf.area(polygon); // Returns area in square meters
 		} catch (e) {
 			console.error('Failed to calculate area:', e);
@@ -60,7 +74,12 @@
 		}
 
 		if (!districtId) {
-			error = 'Требуется выбор округа';
+			error = 'Требуется выбор района';
+			return;
+		}
+
+		if (geometryError) {
+			error = 'Исправьте ошибки в геометрии перед сохранением';
 			return;
 		}
 
@@ -76,7 +95,7 @@
 				body: JSON.stringify({
 					name,
 					description: description || null,
-					geometry,
+					geometry: finalGeometry,
 					area: area || null,
 					balanceHolder: balanceHolder || null,
 					districtId: parseInt(districtId)
@@ -124,9 +143,9 @@
 		</div>
 
 		<div class="form-group">
-			<label for="districtId">Округ *</label>
+			<label for="districtId">Район *</label>
 			<select id="districtId" bind:value={districtId} required>
-				<option value="">Выберите округ</option>
+				<option value="">Выберите район</option>
 				{#each districts as district (district.id)}
 					<option value={district.id}>{district.name}</option>
 				{/each}
@@ -154,6 +173,21 @@
 			<label for="description">Описание</label>
 			<textarea id="description" bind:value={description} rows="4" placeholder="Опишите парк..."
 			></textarea>
+		</div>
+
+		<div class="form-group">
+			<label for="geometry">Геометрия (JSON)</label>
+			<textarea
+				id="geometry"
+				bind:value={editableGeometry}
+				rows="8"
+				placeholder="Координаты в формате GeoJSON"
+				class:error-input={geometryError}
+			></textarea>
+			{#if geometryError}
+				<small class="error-text">{geometryError}</small>
+			{/if}
+			<small>Формат: {`{"type": "Polygon", "coordinates": [[[lng, lat], ...]]}`}</small>
 		</div>
 
 		<div class="button-group">
@@ -279,5 +313,14 @@
 	button:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
+	}
+
+	.error-input {
+		border-color: #c33 !important;
+		background: #fff8f8;
+	}
+
+	.error-text {
+		color: #c33;
 	}
 </style>

@@ -141,7 +141,7 @@
 	}
 
 	async function handleDistrictDelete(districtId: number) {
-		if (!confirm('Вы уверены, что хотите удалить этот округ?')) {
+		if (!confirm('Вы уверены, что хотите удалить этот район?')) {
 			return;
 		}
 
@@ -154,11 +154,11 @@
 				districts = districts.filter((d) => d.id !== districtId);
 			} else {
 				const data = await response.json();
-				alert(data.error || 'Не удалось удалить округ');
+				alert(data.error || 'Не удалось удалить район');
 			}
 		} catch (err) {
 			console.error('Failed to delete district:', err);
-			alert('Произошла ошибка при удалении округа');
+			alert('Произошла ошибка при удалении района');
 		}
 	}
 

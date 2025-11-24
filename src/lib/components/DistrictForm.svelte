@@ -24,12 +24,26 @@
 	let name = $state(district?.name || '');
 	let loading = $state(false);
 	let error = $state('');
+	let editableGeometry = $state(JSON.stringify(geometry, null, 2));
+
+	// Parse geometry from editable text and compute error
+	let parsedGeometry = $derived.by(() => {
+		try {
+			const parsed = JSON.parse(editableGeometry);
+			return { success: true, data: parsed, error: '' };
+		} catch (e) {
+			return { success: false, data: geometry, error: 'Неверный формат JSON' };
+		}
+	});
+
+	let geometryError = $derived(parsedGeometry.error);
+	let finalGeometry = $derived(parsedGeometry.data);
 
 	// Auto-calculate area from geometry (in square meters)
 	let area = $derived.by(() => {
-		if (!geometry) return null;
+		if (!finalGeometry) return null;
 		try {
-			const polygon = turf.polygon(geometry.coordinates);
+			const polygon = turf.polygon(finalGeometry.coordinates);
 			return turf.area(polygon); // Returns area in square meters
 		} catch (e) {
 			console.error('Failed to calculate area:', e);
@@ -45,6 +59,11 @@
 			return;
 		}
 
+		if (geometryError) {
+			error = 'Исправьте ошибки в геометрии перед сохранением';
+			return;
+		}
+
 		loading = true;
 
 		try {
@@ -56,7 +75,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name,
-					geometry
+					geometry: finalGeometry
 				})
 			});
 
@@ -65,7 +84,7 @@
 				onSubmit(updatedDistrict);
 			} else {
 				const data = await response.json();
-				error = data.error || `Не удалось ${isEditMode ? 'обновить' : 'создать'} округ`;
+				error = data.error || `Не удалось ${isEditMode ? 'обновить' : 'создать'} район`;
 			}
 		} catch (err) {
 			error = 'Произошла ошибка';
@@ -77,7 +96,7 @@
 </script>
 
 <div class="form-container">
-	<h2>{isEditMode ? 'Редактировать округ' : 'Создать новый округ'}</h2>
+	<h2>{isEditMode ? 'Редактировать район' : 'Создать новый район'}</h2>
 
 	{#if error}
 		<div class="error">{error}</div>
@@ -96,7 +115,7 @@
 				id="name"
 				bind:value={name}
 				required
-				placeholder="Введите название округа"
+				placeholder="Введите название района"
 			/>
 		</div>
 
@@ -107,6 +126,21 @@
 			</div>
 		{/if}
 
+		<div class="form-group">
+			<label for="geometry">Геометрия (JSON)</label>
+			<textarea
+				id="geometry"
+				bind:value={editableGeometry}
+				rows="8"
+				placeholder="Координаты в формате GeoJSON"
+				class:error-input={geometryError}
+			></textarea>
+			{#if geometryError}
+				<small class="error-text">{geometryError}</small>
+			{/if}
+			<small>Формат: {`{"type": "Polygon", "coordinates": [[[lng, lat], ...]]}`}</small>
+		</div>
+
 		<div class="button-group">
 			<button type="button" onclick={onCancel} disabled={loading}> Отмена </button>
 			<button type="submit" disabled={loading}>
@@ -115,8 +149,8 @@
 						? 'Обновление...'
 						: 'Создание...'
 					: isEditMode
-						? 'Обновить округ'
-						: 'Создать округ'}
+						? 'Обновить район'
+						: 'Создать район'}
 			</button>
 		</div>
 	</form>
@@ -171,7 +205,8 @@
 		color: #333;
 	}
 
-	input {
+	input,
+	textarea {
 		width: 100%;
 		padding: 0.75rem;
 		border: 1px solid #ddd;
@@ -181,9 +216,15 @@
 		box-sizing: border-box;
 	}
 
-	input:focus {
+	input:focus,
+	textarea:focus {
 		outline: none;
 		border-color: #333;
+	}
+
+	textarea {
+		font-family: 'Courier New', monospace;
+		resize: vertical;
 	}
 
 	.button-group {
@@ -219,5 +260,14 @@
 	button:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
+	}
+
+	.error-input {
+		border-color: #c33 !important;
+		background: #fff8f8;
+	}
+
+	.error-text {
+		color: #c33;
 	}
 </style>
