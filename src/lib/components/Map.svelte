@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import L from 'leaflet';
+	import type { Polygon as GeoJSONPolygon, MultiPolygon as GeoJSONMultiPolygon } from 'geojson';
 	import 'leaflet/dist/leaflet.css';
 	import 'leaflet-draw/dist/leaflet.draw.css';
 	import 'leaflet-draw';
@@ -10,7 +11,7 @@
 	import 'leaflet.markercluster';
 	import { FACILITY_TYPES, FACILITY_ICONS } from '$lib/constants';
 
-	type Geometry = { type: string; coordinates: number[][][] };
+	type Geometry = GeoJSONPolygon | GeoJSONMultiPolygon;
 
 	type District = {
 		id: number;
@@ -74,9 +75,9 @@
 
 	// Filter state
 	let showFilterPanel = $state(false);
-	let selectedDistricts = new SvelteSet<number>();
-	let selectedParks = new SvelteSet<number>();
-	let selectedFacilityTypes = new SvelteSet<string>();
+	let selectedDistricts = $state(new SvelteSet<number>());
+	let selectedParks = $state(new SvelteSet<number>());
+	let selectedFacilityTypes = $state(new SvelteSet<string>());
 	let filtersInitialized = $state(false);
 
 	// Initialize all filters as selected only once
@@ -157,16 +158,17 @@
 				featureGroup: drawnItems,
 				remove: false
 			}
-		});
+		} as L.Control.DrawConstructorOptions);
 
 		map.addControl(drawControl);
 
 		// Handle polygon creation
-		map.on(L.Draw.Event.CREATED, (event: L.DrawEvents.Created) => {
-			const layer = event.layer;
+		map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
+			const drawEvent = event as L.DrawEvents.Created;
+			const layer = drawEvent.layer;
 
-			if (event.layerType === 'polygon') {
-				const geometry = layer.toGeoJSON().geometry;
+			if (drawEvent.layerType === 'polygon') {
+				const geometry = layer.toGeoJSON().geometry as Geometry;
 
 				if (isDrawingDistrict) {
 					isDrawingDistrict = false;
@@ -197,7 +199,8 @@
 				const layer = L.geoJSON(district.geometry, {
 					style: {
 						color: '#ff6b35',
-						fillOpacity: 0,
+						fillColor: '#ff6b6b',
+						fillOpacity: 0.15,
 						weight: 3
 					}
 				});
@@ -210,8 +213,8 @@
 
 					// Create popup content
 					let popupContent = `
-						<div class="district-popup">
-							<h3>${district.name}</h3>
+						<div class="district-popup" onclick="event.target === event.currentTarget && this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">
+							<h3 onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()" style="cursor: pointer;">${district.name}</h3>
 							<p><strong>Парки:</strong> ${parkCount}</p>
 							${parkCount > 0 ? `<ul class="park-list">${parksInDistrict.map((p) => `<li>${p.name}</li>`).join('')}</ul>` : '<p class="no-parks">Нет парков в этом округе</p>'}
 							${
@@ -229,7 +232,8 @@
 
 					layer.bindPopup(popupContent, {
 						maxWidth: 300,
-						className: 'custom-popup'
+						className: 'custom-popup',
+						closeButton: true
 					});
 				}
 
@@ -290,8 +294,8 @@
 
 					// Create popup content
 					let popupContent = `
-						<div class="park-popup">
-							<h3>${park.name}</h3>
+						<div class="park-popup" onclick="event.target === event.currentTarget && this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">
+							<h3 onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()" style="cursor: pointer;">${park.name}</h3>
 							${district ? `<p><strong>Округ:</strong> ${district.name}</p>` : ''}
 							${park.description ? `<p><strong>Описание:</strong> ${park.description}</p>` : ''}
 							${park.area ? `<p><strong>Площадь:</strong> ${park.area.toFixed(2)} м² (${(park.area / 10000).toFixed(2)} га)</p>` : ''}
@@ -313,7 +317,8 @@
 
 					layer.bindPopup(popupContent, {
 						maxWidth: 300,
-						className: 'custom-popup'
+						className: 'custom-popup',
+						closeButton: true
 					});
 				}
 
@@ -353,9 +358,9 @@
 
 				// Create popup content
 				let popupContent = `
-					<div class="facility-popup">
+					<div class="facility-popup" onclick="event.target === event.currentTarget && this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()">
 						${facility.photo ? `<img src="${facility.photo}" alt="${facility.name}" class="popup-image" style="max-width: 100%; border-radius: 4px 4px 0 0; margin: -1rem -1rem 0.5rem -1rem; display: block;" />` : ''}
-						<h3>${facility.name}</h3>
+						<h3 onclick="this.closest('.leaflet-popup').querySelector('.leaflet-popup-close-button').click()" style="cursor: pointer;">${facility.name}</h3>
 <h5>${facility.latitude.toFixed(6)}, ${facility.longitude.toFixed(6)}</h5>
 						<p><strong>Тип:</strong> ${FACILITY_TYPES[facility.type as keyof typeof FACILITY_TYPES] || facility.type}</p>
 						${park ? `<p><strong>Парк:</strong> ${park.name}</p>` : ''}
@@ -378,7 +383,8 @@
 
 				marker.bindPopup(popupContent, {
 					maxWidth: 300,
-					className: 'custom-popup'
+					className: 'custom-popup',
+					closeButton: true
 				});
 			}
 
@@ -404,12 +410,19 @@
 			// Remove any temporary drawing layers
 			try {
 				const layersToRemove: L.Layer[] = [];
+				let tileLayer: L.Layer | null = null;
 
-				// @ts-expect-error - access Leaflet's internal layer management
+				// Get tile layer reference
+				map.eachLayer((layer: L.Layer) => {
+					if (layer instanceof L.TileLayer) {
+						tileLayer = layer;
+					}
+				});
+
 				map.eachLayer((layer: L.Layer) => {
 					// Skip tile layer, feature groups, and marker cluster
 					if (
-						layer === map._layers[Object.keys(map._layers)[0]] || // tile layer
+						layer === tileLayer ||
 						layer === drawnItems ||
 						layer === districtLayer ||
 						layer === markerClusterGroup
@@ -428,8 +441,7 @@
 
 					// Remove polylines that are temporary drawing previews
 					if (layer instanceof L.Polyline || layer instanceof L.Polygon) {
-						// @ts-expect-error - check for drawing class
-						const classNames = layer.options?.className || '';
+						const classNames = layer.options.className || '';
 						if (classNames.includes('leaflet-interactive')) {
 							layersToRemove.push(layer);
 						}
@@ -476,7 +488,12 @@
 		cancelAllModes();
 		isDrawingDistrict = true;
 		// Trigger polygon draw mode
-		activeDrawHandler = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
+		const options = drawControl.options as L.Control.DrawConstructorOptions;
+		const polygonOptions = options.draw?.polygon;
+		activeDrawHandler = new L.Draw.Polygon(
+			map as L.DrawMap,
+			typeof polygonOptions === 'object' ? polygonOptions : undefined
+		);
 		activeDrawHandler.enable();
 	}
 
@@ -484,7 +501,12 @@
 		cancelAllModes();
 		isDrawingPark = true;
 		// Trigger polygon draw mode
-		activeDrawHandler = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
+		const options = drawControl.options as L.Control.DrawConstructorOptions;
+		const polygonOptions = options.draw?.polygon;
+		activeDrawHandler = new L.Draw.Polygon(
+			map as L.DrawMap,
+			typeof polygonOptions === 'object' ? polygonOptions : undefined
+		);
 		activeDrawHandler.enable();
 	}
 
@@ -771,6 +793,9 @@
 	:global(.facility-popup) {
 		padding: 1rem;
 		min-width: 200px;
+		max-width: 300px;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
 	}
 
 	:global(.district-popup h3),
@@ -779,6 +804,19 @@
 		margin: 0 0 0.5rem 0;
 		font-size: 1.1rem;
 		color: #333;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
+	}
+
+	:global(.district-popup h5),
+	:global(.park-popup h5),
+	:global(.facility-popup h5) {
+		margin: 0.25rem 0;
+		font-size: 0.85rem;
+		color: #888;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
+		font-weight: normal;
 	}
 
 	:global(.district-popup p),
@@ -787,6 +825,15 @@
 		margin: 0.25rem 0;
 		font-size: 0.9rem;
 		color: #666;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
+	}
+
+	:global(.district-popup strong),
+	:global(.park-popup strong),
+	:global(.facility-popup strong) {
+		word-wrap: break-word;
+		overflow-wrap: break-word;
 	}
 
 	:global(.park-list),
@@ -795,11 +842,15 @@
 		padding-left: 1.2rem;
 		font-size: 0.9rem;
 		color: #555;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
 	}
 
 	:global(.park-list li),
 	:global(.facility-list li) {
 		margin: 0.2rem 0;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
 	}
 
 	:global(.no-parks),

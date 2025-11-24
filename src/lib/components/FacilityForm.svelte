@@ -222,22 +222,22 @@
 		</div>
 
 		<div class="form-group">
-			<label for="contractAction">Специализация</label>
-			<input
-				type="text"
-				id="contractAction"
-				bind:value={contractAction}
-				placeholder="Введите специализацию"
-			/>
-		</div>
-
-		<div class="form-group">
 			<label for="contractWith">C кем контракт</label>
 			<input
 				type="text"
 				id="contractWith"
 				bind:value={contractWith}
 				placeholder="Введите контрагента"
+			/>
+		</div>
+
+		<div class="form-group">
+			<label for="contractAction">Специализация</label>
+			<input
+				type="text"
+				id="contractAction"
+				bind:value={contractAction}
+				placeholder="Введите специализацию"
 			/>
 		</div>
 
