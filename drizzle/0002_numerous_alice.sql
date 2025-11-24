@@ -1,0 +1,1 @@
+ALTER TABLE "districts" ADD COLUMN "area" double precision;

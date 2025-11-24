@@ -12,13 +12,14 @@ export const PUT: RequestHandler = async ({ params, request, cookies }) => {
 	try {
 		const id = parseInt(params.id!);
 		const data = await request.json();
-		const { name, geometry } = data;
+		const { name, geometry, area } = data;
 
 		const [district] = await db
 			.update(districts)
 			.set({
 				name,
 				geometry,
+				area,
 				updatedAt: new Date()
 			})
 			.where(eq(districts.id, id))

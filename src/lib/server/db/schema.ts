@@ -34,6 +34,7 @@ export const districts = pgTable('districts', {
 	id: serial('id').primaryKey(),
 	name: text('name').unique(),
 	geometry: json('geometry'),
+	area: doublePrecision('area'),
 	createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow(),
 	updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow()
 });

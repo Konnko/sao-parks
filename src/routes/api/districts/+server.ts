@@ -20,13 +20,14 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 	try {
 		const data = await request.json();
-		const { name, geometry } = data;
+		const { name, geometry, area } = data;
 
 		const [district] = await db
 			.insert(districts)
 			.values({
 				name,
 				geometry,
+				area,
 				createdAt: new Date(),
 				updatedAt: new Date()
 			})

@@ -17,6 +17,7 @@
 		id: number;
 		name: string;
 		geometry: Geometry;
+		area?: number;
 	};
 
 	type Park = {
@@ -273,6 +274,7 @@
 					let popupContent = `
 						<div class="district-popup">
 							<h3>${district.name}</h3>
+							${district.area ? `<p><strong>Площадь:</strong> ${district.area.toFixed(2)} м² (${(district.area / 10000).toFixed(2)} га)</p>` : ''}
 							<p><strong>Парки:</strong> ${parkCount}</p>
 							${parkCount > 0 ? `<ul class="park-list">${parksInDistrict.map((p) => `<li>${p.name}</li>`).join('')}</ul>` : '<p class="no-parks">Нет парков в этом районе</p>'}
 							${
