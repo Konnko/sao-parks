@@ -724,7 +724,7 @@
 							<input
 								type="checkbox"
 								checked={selectedFacilityTypes.has(type)}
-								onchange={() => toggleFacilityType(type)}
+								oninput={() => toggleFacilityType(type)}
 							/>
 							{FACILITY_ICONS[type as keyof typeof FACILITY_ICONS]}
 							{label}
@@ -748,7 +748,7 @@
 							<input
 								type="checkbox"
 								checked={selectedDistricts.has(district.id)}
-								onchange={() => toggleDistrict(district.id)}
+								oninput={() => toggleDistrict(district.id)}
 							/>
 							{district.name}
 						</label>
@@ -771,7 +771,7 @@
 							<input
 								type="checkbox"
 								checked={selectedParks.has(park.id)}
-								onchange={() => togglePark(park.id)}
+								oninput={() => togglePark(park.id)}
 							/>
 							{park.name}
 						</label>
