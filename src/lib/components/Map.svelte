@@ -42,6 +42,9 @@
 		contractAction?: string;
 		contractWith?: string;
 		contractTerm?: string;
+		area?: number;
+		surfaceType?: string;
+		mafCount?: number;
 	};
 
 	let {
@@ -78,48 +81,37 @@
 	let modalImageUrl = $state<string | null>(null);
 	let showImageModal = $state(false);
 
-	// Filter state
+	// Filter state - simple boolean objects
 	let showFilterPanel = $state(false);
-	let selectedDistricts = $state(new SvelteSet<number>());
-	let selectedParks = $state(new SvelteSet<number>());
-	let selectedFacilityTypes = $state(new SvelteSet<string>());
-	let filtersInitialized = $state(false);
+	let hiddenDistricts = $state<Record<number, boolean>>({});
+	let hiddenParks = $state<Record<number, boolean>>({});
+	let hiddenFacilityTypes = $state<Record<string, boolean>>({});
 
-	// Initialize all filters as selected and keep new items selected
-	$effect(() => {
-		if (!filtersInitialized) {
-			// Initialize with all current items
-			selectedDistricts = new SvelteSet(districts.map((d) => d.id));
-			selectedParks = new SvelteSet(parks.map((p) => p.id));
-			selectedFacilityTypes = new SvelteSet(Object.keys(FACILITY_TYPES));
-			filtersInitialized = true;
-		} else {
-			// Auto-select new districts
-			districts.forEach((d) => {
-				if (!selectedDistricts.has(d.id)) {
-					selectedDistricts.add(d.id);
-				}
-			});
+	// Helper function to format numbers with thousand separators
+	function formatNumber(num: number, decimals: number = 2): string {
+		return num.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+	}
 
-			// Auto-select new parks
-			parks.forEach((p) => {
-				if (!selectedParks.has(p.id)) {
-					selectedParks.add(p.id);
-				}
-			});
+	// Helper functions to check visibility
+	function isDistrictVisible(id: number) {
+		return !hiddenDistricts[id];
+	}
 
-			// Auto-select new facility types
-			Object.keys(FACILITY_TYPES).forEach((type) => {
-				if (!selectedFacilityTypes.has(type)) {
-					selectedFacilityTypes.add(type);
-				}
-			});
-		}
-	});
+	function isParkVisible(id: number) {
+		const park = parks.find((p) => p.id === id);
+		// Hide if park is hidden OR its district is hidden
+		if (hiddenParks[id]) return false;
+		if (park?.districtId && hiddenDistricts[park.districtId]) return false;
+		return true;
+	}
 
-	// Filter parks list to only show parks from selected districts
+	function isFacilityTypeVisible(type: string) {
+		return !hiddenFacilityTypes[type];
+	}
+
+	// Filter parks list to only show parks from visible districts
 	let filteredParks = $derived(
-		parks.filter((park) => !park.districtId || selectedDistricts.has(park.districtId))
+		parks.filter((park) => !park.districtId || isDistrictVisible(park.districtId))
 	);
 
 	// Function to open image modal (exposed to window for popup onclick)
@@ -252,8 +244,8 @@
 		if (!districts || districts.length === 0) return;
 
 		districts.forEach((district) => {
-			// Filter: Skip if district is not selected
-			if (!selectedDistricts.has(district.id)) return;
+			// Filter: Skip if district is hidden
+			if (!isDistrictVisible(district.id)) return;
 			if (district.geometry) {
 				const layer = L.geoJSON(district.geometry, {
 					style: {
@@ -274,7 +266,7 @@
 					let popupContent = `
 						<div class="district-popup">
 							<h3>${district.name}</h3>
-							${district.area ? `<p><strong>Площадь:</strong> ${district.area.toFixed(2)} м² (${(district.area / 10000).toFixed(2)} га)</p>` : ''}
+							${district.area ? `<p><strong>Площадь:</strong> ${formatNumber(district.area)} м² (${formatNumber(district.area / 10000)} га)</p>` : ''}
 							<p><strong>Парки:</strong> ${parkCount}</p>
 							${parkCount > 0 ? `<ul class="park-list">${parksInDistrict.map((p) => `<li>${p.name}</li>`).join('')}</ul>` : '<p class="no-parks">Нет парков в этом районе</p>'}
 							${
@@ -310,10 +302,8 @@
 		if (!parks || parks.length === 0) return;
 
 		parks.forEach((park) => {
-			// Filter: Skip if park is not selected
-			if (!selectedParks.has(park.id)) return;
-			// Filter: Skip if park's district is not selected
-			if (park.districtId && !selectedDistricts.has(park.districtId)) return;
+			// Filter: Skip if park is hidden
+			if (!isParkVisible(park.id)) return;
 			if (park.geometry) {
 				const layer = L.geoJSON(park.geometry, {
 					style: {
@@ -359,7 +349,7 @@
 							<h3>${park.name}</h3>
 							${district ? `<p><strong>Район:</strong> ${district.name}</p>` : ''}
 							${park.description ? `<p><strong>Описание:</strong> ${park.description}</p>` : ''}
-							${park.area ? `<p><strong>Площадь:</strong> ${park.area.toFixed(2)} м² (${(park.area / 10000).toFixed(2)} га)</p>` : ''}
+							${park.area ? `<p><strong>Площадь:</strong> ${formatNumber(park.area)} м² (${formatNumber(park.area / 10000)} га)</p>` : ''}
 							${park.balanceHolder ? `<p><strong>Балансодержатель:</strong> ${park.balanceHolder}</p>` : ''}
 							<p><strong>Объекты:</strong></p>
 							<ul class="facility-list">${facilityList}</ul>
@@ -398,13 +388,10 @@
 		if (!facilities || facilities.length === 0) return;
 
 		facilities.forEach((facility) => {
-			// Filter: Skip if facility type is not selected
-			if (!selectedFacilityTypes.has(facility.type)) return;
-			// Filter: Skip if facility's park is not selected
-			if (facility.parkId && !selectedParks.has(facility.parkId)) return;
-			// Filter: Skip if facility's park's district is not selected
-			const park = parks.find((p) => p.id === facility.parkId);
-			if (park && park.districtId && !selectedDistricts.has(park.districtId)) return;
+			// Filter: Skip if facility type is hidden
+			if (!isFacilityTypeVisible(facility.type)) return;
+			// Filter: Skip if facility's park is hidden
+			if (facility.parkId && !isParkVisible(facility.parkId)) return;
 			const icon = L.divIcon({
 				html: FACILITY_ICONS[facility.type as keyof typeof FACILITY_ICONS] || '📍',
 				className: 'facility-marker',
@@ -435,9 +422,12 @@
 						${facility.photo ? `<img src="${facility.photo}" alt="${facility.name}" class="popup-image" style="width: 100%; height: auto; object-fit: contain; border-radius: 4px 4px 0 0; margin: -1rem -1rem 0.5rem -1rem; display: block; cursor: pointer;" onclick="window.openImageModal('${facility.photo}')" />` : ''}
 						<h3>${facility.name}</h3>
 						<h5>${facility.latitude.toFixed(6)}, ${facility.longitude.toFixed(6)}</h5>
-						<p><strong>Тип:</strong> ${FACILITY_TYPES[facility.type as keyof typeof FACILITY_TYPES] || facility.type}</p>
 						${park ? `<p><strong>Парк:</strong> ${park.name}</p>` : ''}
+						<p><strong>Тип:</strong> ${FACILITY_TYPES[facility.type as keyof typeof FACILITY_TYPES] || facility.type}</p>
 						${facility.description ? `<p><strong>Описание:</strong> ${facility.description}</p>` : ''}
+						${facility.area ? `<p><strong>Площадь:</strong> ${formatNumber(facility.area)} м²</p>` : ''}
+						${facility.surfaceType ? `<p><strong>Тип покрытия:</strong> ${facility.surfaceType}</p>` : ''}
+						${facility.mafCount ? `<p><strong>Количество МАФ:</strong> ${facility.mafCount}</p>` : ''}
 						${facility.contractAction ? `<p><strong>Специализация:</strong> ${facility.contractAction}</p>` : ''}
 						${facility.contractWith ? `<p><strong>C кем контракт:</strong> ${facility.contractWith}</p>` : ''}
 						${formattedContractTerm ? `<p><strong>Cрок контракта:</strong> ${formattedContractTerm}</p>` : ''}
@@ -594,71 +584,60 @@
 		});
 	}
 
-	// Filter helper functions
+	// Filter helper functions - toggle visibility
 	function toggleDistrict(id: number) {
-		if (selectedDistricts.has(id)) {
-			selectedDistricts.delete(id);
-		} else {
-			selectedDistricts.add(id);
-		}
+		hiddenDistricts[id] = !hiddenDistricts[id];
 	}
 
 	function togglePark(id: number) {
-		if (selectedParks.has(id)) {
-			selectedParks.delete(id);
-		} else {
-			selectedParks.add(id);
-		}
+		hiddenParks[id] = !hiddenParks[id];
 	}
 
 	function toggleFacilityType(type: string) {
-		if (selectedFacilityTypes.has(type)) {
-			selectedFacilityTypes.delete(type);
-		} else {
-			selectedFacilityTypes.add(type);
-		}
+		hiddenFacilityTypes[type] = !hiddenFacilityTypes[type];
 	}
 
 	function selectAllDistricts() {
-		selectedDistricts = new SvelteSet(districts.map((d) => d.id));
+		hiddenDistricts = {};
 	}
 
 	function deselectAllDistricts() {
-		selectedDistricts = new SvelteSet();
+		const hidden: Record<number, boolean> = {};
+		districts.forEach((d) => (hidden[d.id] = true));
+		hiddenDistricts = hidden;
 	}
 
 	function selectAllParks() {
-		// Only select parks from selected districts
-		const parksToSelect = parks.filter(
-			(park) => !park.districtId || selectedDistricts.has(park.districtId)
-		);
-		selectedParks = new SvelteSet(parksToSelect.map((p) => p.id));
+		hiddenParks = {};
 	}
 
 	function deselectAllParks() {
-		// Only deselect parks from selected districts (keep others)
-		const parksToKeep = parks.filter(
-			(park) => park.districtId && !selectedDistricts.has(park.districtId)
-		);
-		selectedParks = new SvelteSet(parksToKeep.map((p) => p.id));
+		const hidden: Record<number, boolean> = {};
+		parks.forEach((p) => (hidden[p.id] = true));
+		hiddenParks = hidden;
 	}
 
 	function selectAllFacilityTypes() {
-		selectedFacilityTypes = new SvelteSet(Object.keys(FACILITY_TYPES));
+		hiddenFacilityTypes = {};
 	}
 
 	function deselectAllFacilityTypes() {
-		selectedFacilityTypes = new SvelteSet();
+		const hidden: Record<string, boolean> = {};
+		Object.keys(FACILITY_TYPES).forEach((type) => (hidden[type] = true));
+		hiddenFacilityTypes = hidden;
 	}
 
-	// Reactive updates
+	// Reactive updates - track the hidden objects
 	$effect(() => {
+		hiddenDistricts;
 		if (map && districts) {
 			loadDistricts();
 		}
 	});
 
 	$effect(() => {
+		hiddenParks;
+		hiddenDistricts;
 		if (map && parks) {
 			drawnItems.clearLayers();
 			loadParks();
@@ -666,6 +645,9 @@
 	});
 
 	$effect(() => {
+		hiddenFacilityTypes;
+		hiddenParks;
+		hiddenDistricts;
 		if (map && facilities) {
 			loadFacilities();
 		}
@@ -714,22 +696,17 @@
 				</div>
 				<div class="filter-checkboxes">
 					{#each Object.entries(FACILITY_TYPES) as [type, label] (type)}
-						<label class="checkbox-label">
-							<input
-								type="checkbox"
-								checked={selectedFacilityTypes.has(type)}
-								onchange={(e) => {
-									const target = e.target as HTMLInputElement;
-									if (target.checked) {
-										selectedFacilityTypes.add(type);
-									} else {
-										selectedFacilityTypes.delete(type);
-									}
-								}}
-							/>
+						{@const isChecked = isFacilityTypeVisible(type)}
+						<button
+							class="checkbox-button {isChecked ? 'checked' : ''}"
+							onclick={() => toggleFacilityType(type)}
+						>
+							<span class="checkbox-box">
+								{#if isChecked}✓{/if}
+							</span>
 							{FACILITY_ICONS[type as keyof typeof FACILITY_ICONS]}
 							{label}
-						</label>
+						</button>
 					{/each}
 				</div>
 			</div>
@@ -745,21 +722,16 @@
 				</div>
 				<div class="filter-checkboxes">
 					{#each districts as district (district.id)}
-						<label class="checkbox-label">
-							<input
-								type="checkbox"
-								checked={selectedDistricts.has(district.id)}
-								onchange={(e) => {
-									const target = e.target as HTMLInputElement;
-									if (target.checked) {
-										selectedDistricts.add(district.id);
-									} else {
-										selectedDistricts.delete(district.id);
-									}
-								}}
-							/>
+						{@const isChecked = isDistrictVisible(district.id)}
+						<button
+							class="checkbox-button {isChecked ? 'checked' : ''}"
+							onclick={() => toggleDistrict(district.id)}
+						>
+							<span class="checkbox-box">
+								{#if isChecked}✓{/if}
+							</span>
 							{district.name}
-						</label>
+						</button>
 					{/each}
 				</div>
 			</div>
@@ -775,21 +747,16 @@
 				</div>
 				<div class="filter-checkboxes">
 					{#each filteredParks as park (park.id)}
-						<label class="checkbox-label">
-							<input
-								type="checkbox"
-								checked={selectedParks.has(park.id)}
-								onchange={(e) => {
-									const target = e.target as HTMLInputElement;
-									if (target.checked) {
-										selectedParks.add(park.id);
-									} else {
-										selectedParks.delete(park.id);
-									}
-								}}
-							/>
+						{@const isChecked = isParkVisible(park.id)}
+						<button
+							class="checkbox-button {isChecked ? 'checked' : ''}"
+							onclick={() => togglePark(park.id)}
+						>
+							<span class="checkbox-box">
+								{#if isChecked}✓{/if}
+							</span>
 							{park.name}
-						</label>
+						</button>
 					{/each}
 				</div>
 			</div>
@@ -1074,23 +1041,42 @@
 		gap: 0.5rem;
 	}
 
-	.checkbox-label {
+	.checkbox-button {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 		cursor: pointer;
 		font-size: 0.9rem;
 		color: #555;
+		background: none;
+		border: none;
+		padding: 0.25rem 0;
+		text-align: left;
+		width: 100%;
 	}
 
-	.checkbox-label:hover {
+	.checkbox-button:hover {
 		color: #333;
 	}
 
-	.checkbox-label input[type='checkbox'] {
-		cursor: pointer;
+	.checkbox-box {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		width: 16px;
 		height: 16px;
+		border: 2px solid #999;
+		border-radius: 3px;
+		background: white;
+		flex-shrink: 0;
+		font-size: 12px;
+		line-height: 1;
+	}
+
+	.checkbox-button.checked .checkbox-box {
+		background: #333;
+		border-color: #333;
+		color: white;
 	}
 
 	:global(.district-popup .delete-btn),

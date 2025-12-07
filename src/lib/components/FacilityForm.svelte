@@ -25,6 +25,9 @@
 		contractAction?: string;
 		contractWith?: string;
 		contractTerm?: string | null;
+		area?: number;
+		surfaceType?: string;
+		mafCount?: number;
 	};
 
 	let {
@@ -48,6 +51,9 @@
 	let name = $state(facility?.name || '');
 	let type = $state(facility?.type || 'SPORTS_PLAYGROUND');
 	let description = $state(facility?.description || '');
+	let area = $state(facility?.area?.toString() || '');
+	let surfaceType = $state(facility?.surfaceType || '');
+	let mafCount = $state(facility?.mafCount?.toString() || '');
 	let contractAction = $state(facility?.contractAction || '');
 	let contractWith = $state(facility?.contractWith || '');
 	let contractTermStart = $state('');
@@ -154,6 +160,9 @@
 					longitude,
 					description: description || null,
 					photo: photoUrl || null,
+					area: area ? parseFloat(area) : null,
+					surfaceType: surfaceType || null,
+					mafCount: mafCount ? parseInt(mafCount) : null,
 					contractAction: contractAction || null,
 					contractWith: contractWith || null,
 					contractTerm:
@@ -234,6 +243,39 @@
 					<option value={String(park.id)}>{park.name}</option>
 				{/each}
 			</select>
+		</div>
+
+		<div class="form-group">
+			<label for="area">Площадь (м²)</label>
+			<input
+				type="number"
+				id="area"
+				bind:value={area}
+				step="0.01"
+				min="0"
+				placeholder="Введите площадь"
+			/>
+		</div>
+
+		<div class="form-group">
+			<label for="surfaceType">Тип покрытия</label>
+			<input
+				type="text"
+				id="surfaceType"
+				bind:value={surfaceType}
+				placeholder="Например: резиновое, асфальт, грунт"
+			/>
+		</div>
+
+		<div class="form-group">
+			<label for="mafCount">Количество МАФ</label>
+			<input
+				type="number"
+				id="mafCount"
+				bind:value={mafCount}
+				min="0"
+				placeholder="Введите количество"
+			/>
 		</div>
 
 		<div class="form-group">
