@@ -596,33 +596,27 @@
 
 	// Filter helper functions
 	function toggleDistrict(id: number) {
-		const newSet = new SvelteSet(selectedDistricts);
-		if (newSet.has(id)) {
-			newSet.delete(id);
+		if (selectedDistricts.has(id)) {
+			selectedDistricts.delete(id);
 		} else {
-			newSet.add(id);
+			selectedDistricts.add(id);
 		}
-		selectedDistricts = newSet;
 	}
 
 	function togglePark(id: number) {
-		const newSet = new SvelteSet(selectedParks);
-		if (newSet.has(id)) {
-			newSet.delete(id);
+		if (selectedParks.has(id)) {
+			selectedParks.delete(id);
 		} else {
-			newSet.add(id);
+			selectedParks.add(id);
 		}
-		selectedParks = newSet;
 	}
 
 	function toggleFacilityType(type: string) {
-		const newSet = new SvelteSet(selectedFacilityTypes);
-		if (newSet.has(type)) {
-			newSet.delete(type);
+		if (selectedFacilityTypes.has(type)) {
+			selectedFacilityTypes.delete(type);
 		} else {
-			newSet.add(type);
+			selectedFacilityTypes.add(type);
 		}
-		selectedFacilityTypes = newSet;
 	}
 
 	function selectAllDistricts() {
