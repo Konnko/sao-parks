@@ -25,8 +25,8 @@
 		contractAction?: string;
 		contractWith?: string;
 		contractTerm?: string | null;
-		area?: number;
-		surfaceType?: string;
+		area?: string;
+		typeCoverage?: string;
 		mafCount?: number;
 	};
 
@@ -52,7 +52,7 @@
 	let type = $state(facility?.type || 'SPORTS_PLAYGROUND');
 	let description = $state(facility?.description || '');
 	let area = $state(facility?.area?.toString() || '');
-	let surfaceType = $state(facility?.surfaceType || '');
+	let typeCoverage = $state(facility?.typeCoverage || '');
 	let mafCount = $state(facility?.mafCount?.toString() || '');
 	let contractAction = $state(facility?.contractAction || '');
 	let contractWith = $state(facility?.contractWith || '');
@@ -160,8 +160,8 @@
 					longitude,
 					description: description || null,
 					photo: photoUrl || null,
-					area: area ? parseFloat(area) : null,
-					surfaceType: surfaceType || null,
+					area: area || null,
+					typeCoverage: typeCoverage || null,
 					mafCount: mafCount ? parseInt(mafCount) : null,
 					contractAction: contractAction || null,
 					contractWith: contractWith || null,
@@ -258,11 +258,11 @@
 		</div>
 
 		<div class="form-group">
-			<label for="surfaceType">Тип покрытия</label>
+			<label for="typeCoverage">Тип покрытия</label>
 			<input
 				type="text"
-				id="surfaceType"
-				bind:value={surfaceType}
+				id="typeCoverage"
+				bind:value={typeCoverage}
 				placeholder="Например: резиновое, асфальт, грунт"
 			/>
 		</div>

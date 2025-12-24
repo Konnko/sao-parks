@@ -37,6 +37,9 @@
 		contractAction?: string;
 		contractWith?: string;
 		contractTerm?: string | null;
+		area?: string;
+		typeCoverage?: string;
+		mafCount?: number;
 	};
 
 	let parks = $state<Park[]>([]);
